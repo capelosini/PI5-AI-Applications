@@ -435,6 +435,128 @@ main {
     color: #ff4d4d;
 }
 
+/* Game Board Styles */
+.game-board {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background-color: #333;
+    padding: 4px;
+    border-radius: 8px;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+.board-row {
+    display: flex;
+    gap: 4px;
+}
+
+.board-cell {
+    width: 60px;
+    height: 60px;
+    background-color: #1a1a20;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.board-cell.level-1 { background-color: #2a2a32; }
+.board-cell.level-2 { background-color: #3a3a45; }
+.board-cell.level-3 { background-color: #4a4a58; }
+.board-cell.level-4 { 
+    background-color: #5a5a6b;
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.cell-level {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.7rem;
+    color: #666;
+    font-weight: bold;
+}
+
+.professor-token {
+    width: 40px;
+    height: 40px;
+    background-color: #ff4d4d;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: help;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.professor-tooltip {
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 4px 8px;
+    position: absolute;
+    z-index: 10;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    border: 1px solid #444;
+}
+
+.professor-token:hover .professor-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.game-info-panel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    background-color: #25252d;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #333;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fdfdfd;
+}
+
+.info-value.turn-active {
+    color: #ff4d4d;
+}
+
 footer {
     text-align: center;
     padding: 1rem;

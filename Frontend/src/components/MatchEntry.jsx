@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router";
+
 export default function MatchEntry({ match, onJoin }) {
+    const navigate = useNavigate();
+
     return (
         <div className="match-card">
             <div className="match-info">
@@ -17,14 +21,22 @@ export default function MatchEntry({ match, onJoin }) {
                     <span className="player-name">{match.lovelaceName}</span>
                 </div>
             </div>
-            {match.isWaiting && (
+            <div className="match-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                {match.isWaiting && (
+                    <button 
+                        className="btn btn-primary btn-sm" 
+                        onClick={() => onJoin(match.id)}
+                    >
+                        Join
+                    </button>
+                )}
                 <button 
-                    className="btn btn-primary btn-sm" 
-                    onClick={() => onJoin(match.id)}
+                    className="btn btn-secondary btn-sm" 
+                    onClick={() => navigate(`/spectate/${match.id}`)}
                 >
-                    Join
+                    Spectate
                 </button>
-            )}
+            </div>
         </div>
     );
 }
