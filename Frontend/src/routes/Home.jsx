@@ -9,8 +9,8 @@ import AccountManager from "@/utils/AccountManager";
 import { API, setAuthToken } from "@/utils/API";
 
 export default function Home() {
-    const [view, setView] = useState("lobby"); // "lobby", "create", "join", "accounts", "players"
-    const [matches, setMatches] = useState([]);
+  const [view, setView] = useState("lobby"); // "lobby", "create", "join", "accounts", "players"
+  const [matches, setMatches] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,24 +33,24 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-      const active = AccountManager.getActivePlayer();
-      if (active?.accessToken) {
-          setAuthToken(active.accessToken);
-      }
+    const active = AccountManager.getActivePlayer();
+    if (active?.accessToken) {
+      setAuthToken(active.accessToken);
+    }
 
-      if (view === "lobby") {
-          fetchMatches();
-      }
+    if (view === "lobby") {
+      fetchMatches();
+    }
   }, [view, fetchMatches]);
 
   const handleAccountChange = () => {
-      const active = AccountManager.getActivePlayer();
-      setActiveAccount(active);
-      if (active?.accessToken) {
-          setAuthToken(active.accessToken);
-      }
-      setView("lobby");
-      fetchMatches();
+    const active = AccountManager.getActivePlayer();
+    setActiveAccount(active);
+    if (active?.accessToken) {
+      setAuthToken(active.accessToken);
+    }
+    setView("lobby");
+    fetchMatches();
   };
   const handleCreateRoom = async (config) => {
     try {
@@ -93,9 +93,9 @@ export default function Home() {
               onClick={() => setView("accounts")}
             >
               {activeAccount?.aiPlayerAvatar && (
-                <img 
-                  src={activeAccount.aiPlayerAvatar} 
-                  alt="" 
+                <img
+                  src={activeAccount.aiPlayerAvatar}
+                  alt=""
                   className="badge-avatar"
                 />
               )}
@@ -122,24 +122,23 @@ export default function Home() {
           </div>
 
           <div className="button-group">
-              <button className="btn btn-primary" onClick={() => setView("create")}>
-                  Create Room
-              </button>
-              <button className="btn btn-secondary" onClick={() => setView("join")}>
-                  Join Room
-              </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => setView("create")}
+            >
+              Create Room
+            </button>
           </div>
 
-          <div style={{ marginTop: '1rem' }}>
-              <button 
-                  className="btn btn-secondary" 
-                  style={{ width: '100%' }}
-                  onClick={() => setView("players")}
-              >
-                  Show Online Players
-              </button>
+          <div style={{ marginTop: "1rem" }}>
+            <button
+              className="btn btn-secondary"
+              style={{ width: "100%" }}
+              onClick={() => setView("players")}
+            >
+              Show Online Players
+            </button>
           </div>
-
 
           {error && (
             <p style={{ color: "#ff4d4d", marginTop: "1rem" }}>{error}</p>
@@ -150,33 +149,28 @@ export default function Home() {
       )}
 
       {view === "accounts" && (
-          <AccountManagement 
-              onAccountChange={handleAccountChange}
-              onCancel={() => setView("lobby")}
-          />
+        <AccountManagement
+          onAccountChange={handleAccountChange}
+          onCancel={() => setView("lobby")}
+        />
       )}
 
-      {view === "players" && (
-          <PlayerList 
-              onCancel={() => setView("lobby")}
-          />
-      )}
+      {view === "players" && <PlayerList onCancel={() => setView("lobby")} />}
       {view === "create" && (
-          <CreateRoomForm 
-              activePlayer={activeAccount}
-              onSubmit={handleCreateRoom} 
-              onCancel={() => setView("lobby")} 
-          />
+        <CreateRoomForm
+          activePlayer={activeAccount}
+          onSubmit={handleCreateRoom}
+          onCancel={() => setView("lobby")}
+        />
       )}
 
       {view === "join" && (
-          <JoinRoomForm 
-              activePlayer={activeAccount}
-              onSubmit={handleJoinRoom} 
-              onCancel={() => setView("lobby")} 
-          />
+        <JoinRoomForm
+          activePlayer={activeAccount}
+          onSubmit={handleJoinRoom}
+          onCancel={() => setView("lobby")}
+        />
       )}
-
 
       <p style={{ marginTop: "2rem", fontSize: "0.8rem", color: "#666" }}>
         Base api url: {import.meta.env.VITE_GAME_API_BASE_URL}
