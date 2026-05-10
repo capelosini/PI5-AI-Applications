@@ -1,100 +1,136 @@
-import json
-import os
 import random
 
-import dotenv
-import requests
 import torch
 
-dotenv.load_dotenv()
-GAME_API_URL = os.getenv("GAME_API_URL")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-DIRECTIONS = [
-    (-1, 0),  # 0: North
-    (-1, 1),  # 1: North-East
-    (0, 1),  # 2: East
-    (1, 1),  # 3: South-East
-    (1, 0),  # 4: South
-    (1, -1),  # 5: South-West
-    (0, -1),  # 6: West
-    (-1, -1),  # 7: North-West
-]
-
+# Configuration
 BOARD_SIZE = 5
+DIRECTIONS = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
 PLAYERS_LIST = ["beatriz", "karin", "claro", "rey"]
 TEAMS = {
-    "lovelace": [PLAYERS_LIST[0], PLAYERS_LIST[1]],
-    "turing": [PLAYERS_LIST[2], PLAYERS_LIST[3]],
+    "lovelace": [PLAYERS_LIST[0], PLAYERS_LIST[1]],  # Team 2
+    "turing": [PLAYERS_LIST[2], PLAYERS_LIST[3]],  # Team 1
 }
-CURRENT_TEAM = "turing"
+TEAM_ID = {1: "turing", 2: "lovelace"}
 
-actionsArray = []
-
-for moveIdx in range(8):
-    for upgradeIdx in range(8):
-        moveOffset = DIRECTIONS[moveIdx]
-        upgradeOffset = DIRECTIONS[upgradeIdx]
-
-        actionsArray.append({"move": moveOffset, "upgrade": upgradeOffset})
-
-actionsN = len(actionsArray)
+# Precompute combined actions (64 combinations)
+ACTIONS_COMBINED = []
+for m_idx in range(8):
+    for u_idx in range(8):
+        ACTIONS_COMBINED.append(
+            {"move": DIRECTIONS[m_idx], "upgrade": DIRECTIONS[u_idx]}
+        )
 
 
 class Game:
     def __init__(self):
-        self.state = None
-        self.session = requests.Session()
-        self.session.headers.update(
-            {"Authorization": f"Bearer {BOT_TOKEN}", "Content-Type": "application/json"}
-        )
+        self.board = None  # 5x5 grid of levels
+        self.char_positions = {}  # name -> (y, x)
+        self.turn_team_id = 1
+        self.status = "PLAYING"
+        self.winner = None
 
     def start(self):
-        self.state = {
-            "game_id": "9b4e3559-fd27-4d3a-a9f5-b58f3362443c",
-            "status": "PLAYING",
-            "winner_team": None,
-            "turn_number": random.randint(1, 2),
-            "turn_team_id": 1,
-            "turn_phase": "player_turn",
-            "board": self.generateStartBoard(),
-            "last_action": None,
-        }
+        # Initialize board with level 1
+        self.board = [[1 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+        self.status = "PLAYING"
+        self.turn_team_id = 1
 
-    def generateStartBoard(self):
-        board = []
-        for row in range(BOARD_SIZE):
-            board.append([])
-            for cell in range(BOARD_SIZE):
-                board[row].append({"level": 0, "professor": None})
-        for i in range(4):
-            board[random.randint(0, BOARD_SIZE - 1)][random.randint(0, BOARD_SIZE - 1)][
-                "professor"
-            ] = PLAYERS_LIST[i]
-        return board
+        # Randomly place characters on unique cells
+        all_cells = [(y, x) for y in range(BOARD_SIZE) for x in range(BOARD_SIZE)]
+        starting_pos = random.sample(all_cells, 4)
 
-    def formatBoard(self, board):
-        formated = torch.zeros((BOARD_SIZE * BOARD_SIZE, 2), dtype=torch.float32)
-        for row in range(BOARD_SIZE):
-            for cell in range(BOARD_SIZE):
-                formated[row * BOARD_SIZE + cell][0] = board[row][cell]["level"]
-                formated[row * BOARD_SIZE + cell][1] = (
-                    0
-                    if board[row][cell]["professor"] is None
-                    else (
-                        1
-                        if board[row][cell]["professor"].lower() in TEAMS[CURRENT_TEAM]
-                        else 2
+        for i, name in enumerate(PLAYERS_LIST):
+            self.char_positions[name] = starting_pos[i]
+
+    def get_valid_mask(self):
+        """Returns a boolean array of size 128 (64 actions * 2 characters)"""
+        mask = torch.zeros(128, dtype=torch.bool)
+        current_team_name = TEAM_ID[self.turn_team_id]
+        my_chars = TEAMS[current_team_name]
+
+        for char_idx, char_name in enumerate(my_chars):
+            y, x = self.char_positions[char_name]
+            curr_level = self.board[y][x]
+
+            for act_idx, act in enumerate(ACTIONS_COMBINED):
+                # 1. Check Move Validity
+                my, mx = act["move"]
+                ny, nx = y + my, x + mx
+
+                if 0 <= ny < BOARD_SIZE and 0 <= nx < BOARD_SIZE:
+                    target_level = self.board[ny][nx]
+
+                    # Rule: currentCellLevel >= nextCellLevel - 1
+                    # Rule: Cell cannot be occupied by another character
+                    is_occupied = any(
+                        p == (ny, nx) for p in self.char_positions.values()
                     )
-                )
 
-        return formated
+                    if target_level <= (curr_level + 1) and not is_occupied:
+                        # 2. Check Upgrade Validity
+                        uy, ux = act["upgrade"]
+                        un_y, un_x = ny + uy, nx + ux
 
-    def getMockState(self, currentState=None):
-        if GAME_API_URL is None:
-            return {}
-        response = self.session.post(
-            GAME_API_URL + "/games/mock-state",
-            data=json.dumps(currentState) if currentState else None,
-        )
-        self.state = response.json()
+                        if 0 <= un_y < BOARD_SIZE and 0 <= un_x < BOARD_SIZE:
+                            if (
+                                self.board[un_y][un_x] < 4
+                            ):  # Cannot upgrade past level 4
+                                mask[char_idx * 64 + act_idx] = True
+        return mask
+
+    def apply_action(self, action_id):
+        if self.status != "PLAYING":
+            return
+
+        team_name = TEAM_ID[self.turn_team_id]
+        char_names = TEAMS[team_name]
+
+        char_idx = action_id // 64
+        act_idx = action_id % 64
+        char_name = char_names[char_idx]
+        action = ACTIONS_COMBINED[act_idx]
+
+        # Current position
+        y, x = self.char_positions[char_name]
+
+        # Execute Move
+        my, mx = action["move"]
+        ny, nx = y + my, x + mx
+        self.char_positions[char_name] = (ny, nx)
+
+        # Check Win Condition
+        if self.board[ny][nx] == 4:
+            self.status = "FINISHED"
+            self.winner = team_name
+            return
+
+        # Execute Upgrade
+        uy, ux = action["upgrade"]
+        un_y, un_x = ny + uy, nx + ux
+        self.board[un_y][un_x] += 1
+
+        # Switch Turn
+        self.turn_team_id = 3 - self.turn_team_id  # Toggles between 1 and 2
+
+    def get_state_tensor(self):
+        """Returns a (3, 5, 5) tensor for PyTorch RL"""
+        tensor = torch.zeros((3, BOARD_SIZE, BOARD_SIZE))
+
+        # Channel 0: Levels (Normalized)
+        for y in range(BOARD_SIZE):
+            for x in range(BOARD_SIZE):
+                tensor[0, y, x] = self.board[y][x] / 4.0
+
+        # Channel 1: My Characters
+        my_team = TEAMS[TEAM_ID[self.turn_team_id]]
+        for name in my_team:
+            y, x = self.char_positions[name]
+            tensor[1, y, x] = 1.0
+
+        # Channel 2: Enemy Characters
+        enemy_team = TEAMS[TEAM_ID[3 - self.turn_team_id]]
+        for name in enemy_team:
+            y, x = self.char_positions[name]
+            tensor[2, y, x] = 1.0
+
+        return tensor
