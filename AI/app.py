@@ -1,11 +1,14 @@
 import random
 
 import torch
-from game import Game
+from game import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, Game
+from model import Model
 
 # --- Simple Simulation Loop ---
 game = Game()
 game.start()
+
+model = Model(BOARD_SIZE, len(ACTIONS_COMBINED) * len(TEAM_ID))
 
 while game.status == "PLAYING":
     mask = game.get_valid_mask()

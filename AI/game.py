@@ -79,38 +79,43 @@ class Game:
         return mask
 
     def apply_action(self, action_id):
-        if self.status != "PLAYING":
-            return
+        reward = 0.0
 
+        # 1. Identify current state info
         team_name = TEAM_ID[self.turn_team_id]
-        char_names = TEAMS[team_name]
+        char_name = TEAMS[team_name][action_id // 64]
+        old_y, old_x = self.char_positions[char_name]
+        old_level = self.board[old_y][old_x]
 
-        char_idx = action_id // 64
-        act_idx = action_id % 64
-        char_name = char_names[char_idx]
-        action = ACTIONS_COMBINED[act_idx]
+        # 2. Execute Move
+        action = ACTIONS_COMBINED[action_id % 64]
+        ny, nx = old_y + action["move"][0], old_x + action["move"][1]
+        new_level = self.board[ny][nx]
 
-        # Current position
-        y, x = self.char_positions[char_name]
-
-        # Execute Move
-        my, mx = action["move"]
-        ny, nx = y + my, x + mx
         self.char_positions[char_name] = (ny, nx)
 
-        # Check Win Condition
-        if self.board[ny][nx] == 4:
+        # Reward for climbing
+        if new_level > old_level:
+            reward += 0.5
+
+        # 3. Check Win Condition
+        if new_level == 4:
             self.status = "FINISHED"
             self.winner = team_name
-            return
+            return 10.0  # Big win reward
 
-        # Execute Upgrade
-        uy, ux = action["upgrade"]
-        un_y, un_x = ny + uy, nx + ux
-        self.board[un_y][un_x] += 1
+        # 4. Execute Upgrade
+        uy, ux = ny + action["upgrade"][0], nx + action["upgrade"][1]
+        self.board[uy][ux] += 1
 
-        # Switch Turn
-        self.turn_team_id = 3 - self.turn_team_id  # Toggles between 1 and 2
+        # Reward for creating a path for yourself or blocking
+        if self.board[uy][ux] == 4:
+            reward += 0.2  # Strategic placement
+
+        # 5. Switch Turn
+        self.turn_team_id = 3 - self.turn_team_id
+
+        return reward - 0.01  # Small step penalty to discourage aimless wandering
 
     def get_state_tensor(self):
         """Returns a (3, 5, 5) tensor for PyTorch RL"""
