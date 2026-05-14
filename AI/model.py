@@ -9,37 +9,53 @@ class Model(nn.Module):
     def __init__(self, board_size=5, actions_n=128):
         super(Model, self).__init__()
 
-        # Conv Block 1: Captures local patterns (adjacent levels)
-        self.conv_block1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1), nn.BatchNorm2d(64), nn.ReLU()
-        )
-
-        # Conv Block 2: Captures wider board relationships
-        self.conv_block2 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, padding=1), nn.BatchNorm2d(128), nn.ReLU()
+        # --- FEATURE EXTRACTOR ---
+        # Captures local patterns and board-wide relationships
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            # Layer 3: Ensures the AI can "see" across the whole 5x5 board
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
         )
 
         # 128 filters * 5 * 5 = 3200
         flattened_size = 128 * board_size * board_size
 
-        self.decision_head = nn.Sequential(
-            nn.Linear(flattened_size, 512),
+        # --- DUELING DQN HEADS ---
+
+        # 1. Value Stream: "How good is the board state overall?"
+        self.value_stream = nn.Sequential(
+            nn.Linear(flattened_size, 256),
             nn.ReLU(),
-            nn.Dropout(
-                0.2
-            ),  # Prevents the AI from over-relying on specific "lucky" moves
-            nn.Linear(512, 256),
+            nn.Linear(256, 1),  # Outputs a single number (V)
+        )
+
+        # 2. Advantage Stream: "How much better is this specific action?"
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(flattened_size, 256),
             nn.ReLU(),
-            nn.Linear(256, actions_n),  # Raw Q-values
+            nn.Linear(256, actions_n),  # Outputs 128 numbers (A)
         )
 
     def forward(self, x):
-        # Input x shape: (Batch, 3, 5, 5)
-        x = self.conv_block1(x)
-        x = self.conv_block2(x)
+        # 1. Extract visual features
+        x = self.features(x)
 
-        # Flatten
+        # 2. Flatten
         x = x.view(x.size(0), -1)
 
-        # Output Q-values for all 128 actions
-        return self.decision_head(x)
+        # 3. Calculate Value and Advantage
+        values = self.value_stream(x)
+        advantages = self.advantage_stream(x)
+
+        # 4. Combine them using the Dueling Aggregation formula
+        # Q(s,a) = V(s) + (A(s,a) - mean(A(s,a)))
+        q_values = values + (advantages - advantages.mean(dim=1, keepdim=True))
+
+        return q_values
