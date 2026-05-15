@@ -46,6 +46,7 @@ def play_test_match(model_path):
 
         game.apply_action(action)
 
+    game.render()
     print(f"--- Results after {turn_count} turns ---")
     print(f"Winner: {game.winner}")
     if game.winner == "turing":

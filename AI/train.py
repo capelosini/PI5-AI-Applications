@@ -78,8 +78,12 @@ def optimize_model():
     with torch.no_grad():
         next_q_values = target_net(next_state_batch)
         next_q_values[~next_mask_batch] = -1e9
+
+        # This is the ENEMY'S max future score
         max_next_q = next_q_values.max(1)[0]
-        expected_q = reward_batch + (GAMMA * max_next_q * (1 - done_batch))
+
+        # Subtract the enemy's expected Q-value
+        expected_q = reward_batch - (GAMMA * max_next_q * (1 - done_batch))
 
     loss = F.smooth_l1_loss(current_q.squeeze(), expected_q)
 
@@ -91,7 +95,7 @@ def optimize_model():
 
 
 # --- Simulation Loop ---
-num_episodes = 20000
+num_episodes = 2000
 
 for episode in range(num_episodes):
     game = Game()
