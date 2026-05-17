@@ -21,7 +21,10 @@ async def health():
 @app.post("/move")
 async def move(body: AITurnRequest):
     if body.turn_phase == TurnPhase.SETUP:
+        print("received setup request", flush=True)
         return choose_setup(body.board)
     else:
         jogada = choose_turn(body.board, int(body.your_team))
+        print("received turn request", flush=True)
+        print(jogada, flush=True)
         return jogada

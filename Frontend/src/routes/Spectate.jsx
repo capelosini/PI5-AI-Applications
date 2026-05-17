@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
-import { API } from "@/utils/API";
+import { API, setAuthToken } from "@/utils/API";
 import GameBoard from "@/components/GameBoard";
+import AccountManager from "@/utils/AccountManager";
 
 export default function Spectate() {
   const { gameId } = useParams();
@@ -24,6 +25,10 @@ export default function Spectate() {
   }, [gameId]);
 
   useEffect(() => {
+    const active = AccountManager.getActivePlayer();
+    if (active?.accessToken) {
+      setAuthToken(active.accessToken);
+    }
     fetchGameStatus();
   }, [fetchGameStatus]);
 
@@ -34,6 +39,28 @@ export default function Spectate() {
       </div>
     );
   }
+
+  const handleStartMatch = async () => {
+    try {
+      setLoading(true);
+      await API.games.start(gameId);
+      await fetchGameStatus();
+    } catch (err) {
+      console.error("Failed to start match:", err);
+      setError("Failed to start match: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activePlayer = AccountManager.getActivePlayer();
+  const canStart =
+    match &&
+    match.status === "PAUSED" &&
+    activePlayer &&
+    String(match.createdBy) === String(activePlayer.id) &&
+    match.turingPlayer &&
+    match.lovelacePlayer;
 
   const getTurnTeamName = () => {
     if (!match) return "N/A";
@@ -52,9 +79,19 @@ export default function Spectate() {
       >
         <h1 style={{ margin: 0, fontSize: "1.5rem" }}>Spectating Game</h1>
         <div style={{ display: "flex", gap: "1rem" }}>
+          {canStart && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleStartMatch}
+              disabled={loading}
+            >
+              {loading ? "Starting..." : "Start Match"}
+            </button>
+          )}
           <button
             className="btn btn-secondary btn-sm"
             onClick={fetchGameStatus}
+            disabled={loading}
           >
             Refresh
           </button>
@@ -73,6 +110,30 @@ export default function Spectate() {
 
       {match && (
         <>
+          {match.status === "FINISHED" && (
+            <div
+              className="winner-announcement"
+              style={{
+                backgroundColor: "rgba(46, 125, 50, 0.1)",
+                border: "1px solid #2e7d32",
+                borderRadius: "12px",
+                padding: "1.5rem",
+                marginBottom: "2rem",
+                textAlign: "center",
+              }}
+            >
+              <h2 style={{ color: "#2e7d32", margin: "0 0 0.5rem 0", fontSize: "1.8rem" }}>
+                Match Finished!
+              </h2>
+              <p style={{ fontSize: "1.3rem", margin: 0 }}>
+                Winner: <strong style={{ color: "#fdfdfd" }}>{match.winnerName}</strong>
+              </p>
+              <p style={{ color: "#888", marginTop: "0.5rem" }}>
+                Team: {match.winnerTeam === 1 ? "Turing" : "Lovelace"}
+              </p>
+            </div>
+          )}
+
           <div className="game-info-panel">
             <div className="info-item">
               <span className="info-label">Status</span>

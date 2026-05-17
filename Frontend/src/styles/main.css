@@ -218,6 +218,11 @@ main {
     color: #e3f2fd;
 }
 
+.status-finished {
+    background-color: #455a64;
+    color: #eceff1;
+}
+
 .match-players {
     display: grid;
     grid-template-columns: 1fr 1fr;

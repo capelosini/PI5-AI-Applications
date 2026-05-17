@@ -23,7 +23,7 @@ export default function Home() {
     setError(null);
     try {
       const response = await API.games.list({ page_size: 50 });
-      setMatches(Match.fromArray(response.items));
+      setMatches(response.items);
     } catch (err) {
       console.error("Failed to fetch matches:", err);
       setError("Failed to load matches. Authentication may be required.");
