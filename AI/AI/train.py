@@ -95,7 +95,7 @@ def optimize_model():
 
 
 # --- Simulation Loop ---
-num_episodes = 2000
+num_episodes = 5000
 
 for episode in range(num_episodes):
     game = Game()

@@ -114,6 +114,7 @@ class Game:
         team_name = TEAM_ID[self.turn_team_id]
         char_names = TEAMS[team_name]
         enemy_team_name = TEAM_ID[3 - self.turn_team_id]
+        enemy_chars = TEAMS[enemy_team_name]
 
         # 1. Kill Instinct Check
         win_was_possible = self._check_if_win_possible(char_names)
@@ -124,6 +125,7 @@ class Game:
         old_pos = self.char_positions[char_name]
 
         ny, nx = old_pos[0] + action["move"][0], old_pos[1] + action["move"][1]
+        old_level = self.board[old_pos[0]][old_pos[1]]
         new_level = self.board[ny][nx]
         self.char_positions[char_name] = (ny, nx)
 
@@ -131,29 +133,43 @@ class Game:
         if new_level == 4:
             self.status = "FINISHED"
             self.winner = team_name
-            return 30.0
+            return 20.0  # Standardized win reward
 
-        # 4. Movement Rewards
-        if new_level > self.board[old_pos[0]][old_pos[1]]:
-            reward += 0.5
+        # 4. Movement Rewards (Climbing)
+        if new_level > old_level:
+            if new_level == 3:
+                reward += 1.5  # High value for reaching "threat" level
+            elif new_level == 2:
+                reward += 0.3
 
         if win_was_possible:
-            reward -= 15.0  # Heavy penalty for missing the kill
+            reward -= 10.0  # Penalty for missing the kill
 
         # 5. Execute Upgrade
         uy, ux = ny + action["upgrade"][0], nx + action["upgrade"][1]
         self.board[uy][ux] += 1
         upgraded_level = self.board[uy][ux]
 
-        # 6. Honeypot Upgrade Logic | Trapping
-        for e_char in TEAMS[enemy_team_name]:
+        # 6. Strategic Building
+        # Penalty for building a winning platform for the enemy
+        for e_char in enemy_chars:
             ey, ex = self.char_positions[e_char]
-            if abs(ey - uy) <= 1 and abs(ex - ux) <= 1:
-                # FIXED LOGIC ORDER: Check the most specific/dangerous condition first
-                if upgraded_level == 4:
-                    reward -= 5.0  # Highly risky to give them a Level 4 goal!
-                elif upgraded_level == 3:
-                    reward += 3.5  # Excellent! Blocking an enemy with a high cell.
+            e_level = self.board[ey][ex]
+            dist = max(abs(ey - uy), abs(ex - ux))
+
+            if dist <= 1:  # Enemy is adjacent to the upgrade
+                if upgraded_level == 4 and e_level == 3:
+                    reward -= 8.0  # EXTREMELY DANGEROUS: You just gave them the win
+                elif upgraded_level == 3 and e_level == 2:
+                    reward -= 2.0  # Dangerous: You gave them a ladder to L3
+
+        # Reward for building a "win" for yourself
+        for m_char in char_names:
+            my, mx = self.char_positions[m_char]
+            m_level = self.board[my][mx]
+            dist = max(abs(my - uy), abs(mx - ux))
+            if dist <= 1 and upgraded_level == 4 and m_level == 3:
+                reward += 1.0  # Good: Setting up your own win
 
         # 7. Switch Turn & Check for Total Trap
         self.turn_team_id = 3 - self.turn_team_id
@@ -161,37 +177,43 @@ class Game:
 
         enemy_mask = self.get_valid_mask()
         if not enemy_mask.any():
-            reward += 15.0  # (Optional) Boosted to ensure trapping is deeply valued
+            reward += 20.0  # Trapping is as good as reaching L4
             self.status = "FINISHED"
             self.winner = team_name
 
-        # 8. Dynamic Turn Penalty
-        turn_penalty = -0.1
-        if self.turn_count > 30:
-            turn_penalty = -0.5  # Make it "painful" to keep playing without winning
+        # 8. Threat/Turn Penalty
+        # Penalty if ANY enemy is currently on Level 3 (they might win next turn)
+        for e_char in enemy_chars:
+            ey, ex = self.char_positions[e_char]
+            if self.board[ey][ex] == 3:
+                reward -= 0.5
+
+        turn_penalty = -0.05  # Lower base penalty to allow for exploration
+        if self.turn_count > 40:
+            turn_penalty = -0.2
 
         return reward + turn_penalty
 
     def get_state_tensor(self):
-        """Returns a (3, 5, 5) tensor for PyTorch RL"""
-        tensor = torch.zeros((3, BOARD_SIZE, BOARD_SIZE))
+        """Returns a (5, 5, 5) tensor for PyTorch RL"""
+        tensor = torch.zeros((5, BOARD_SIZE, BOARD_SIZE))
 
         # Channel 0: Levels (Normalized)
         for y in range(BOARD_SIZE):
             for x in range(BOARD_SIZE):
                 tensor[0, y, x] = self.board[y][x] / 4.0
 
-        # Channel 1: My Characters
+        # Channel 1 & 2: My Characters (Binary)
         my_team = TEAMS[TEAM_ID[self.turn_team_id]]
-        for name in my_team:
+        for i, name in enumerate(my_team):
             y, x = self.char_positions[name]
-            tensor[1, y, x] = 1.0
+            tensor[1 + i, y, x] = 1.0
 
-        # Channel 2: Enemy Characters
+        # Channel 3 & 4: Enemy Characters (Binary)
         enemy_team = TEAMS[TEAM_ID[3 - self.turn_team_id]]
-        for name in enemy_team:
+        for i, name in enumerate(enemy_team):
             y, x = self.char_positions[name]
-            tensor[2, y, x] = 1.0
+            tensor[3 + i, y, x] = 1.0
 
         return tensor
 

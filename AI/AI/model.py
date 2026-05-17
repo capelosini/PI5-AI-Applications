@@ -12,7 +12,7 @@ class Model(nn.Module):
         # --- FEATURE EXTRACTOR ---
         # Captures local patterns and board-wide relationships
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.Conv2d(5, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=3, padding=1),

@@ -100,6 +100,22 @@ Immediately after each move, Turing pauses to "study":
 - **Brain Sync**: Every 10 games, the Policy Net's weights are copied to the Target Net.
 - **League Checkpoints**: Every 500 games, a checkpoint (`.pth`) is saved to a "League" folder to serve as a future opponent.
 
+## Game Rewards Table
+
+| Category | Event | Reward | Description |
+| :--- | :--- | :---: | :--- |
+| **Wins** | Victory (Level 4) | `+20.0` | Character reaches the winning level. |
+| | Victory (Trap) | `+20.0` | Enemy has no valid moves (stalemate win). |
+| | Missed Kill | `-10.0` | Penalty for failing to take an available winning move. |
+| **Movement** | Move to Level 3 | `+1.5` | Reaching the high-threat level. |
+| | Move to Level 2 | `+0.3` | Standard progression reward. |
+| **Building** | Setup Own Win | `+1.0` | Upgrading to Level 4 while adjacent and on Level 3. |
+| | Enemy Ladder (L4) | `-8.0` | Building a Level 4 platform for an adjacent enemy. |
+| | Enemy Ladder (L3) | `-2.0` | Building a Level 3 platform for an adjacent enemy. |
+| **Threats** | Enemy on L3 | `-0.5` | Penalty for every turn an enemy remains on Level 3. |
+| | Base Turn | `-0.05` | Small penalty to encourage efficiency. |
+| | Stalled (>40 turns) | `-0.2` | Increased penalty for long, unproductive games. |
+
 ---
 
 ## 🎮 Game Rules & Components
