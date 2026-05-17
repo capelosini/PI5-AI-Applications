@@ -123,9 +123,3 @@ The Frontend includes a dedicated **Spectate** route (`/spectate/:gameId`) that 
 - **AI Backend**: Python, FastAPI, Uvicorn, Ngrok.
 - **Deep Learning**: PyTorch (Dueling DQN).
 - **Deployment**: Environment-based configuration, distributed via REST APIs.
-
----
-
-## 📄 License
-
-This project is licensed under the ISC License.
