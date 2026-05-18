@@ -120,6 +120,7 @@ def random_fallback(
     board: list[list[Cell]], team_id: int
 ) -> Optional[PlayerTurnResponse]:
     """Fallback simples caso o modelo falhe."""
+    print("Using fallback AI")
     ai_board = [[cell.level for cell in row] for row in board]
     char_positions = {}
     for r in range(BOARD_SIZE):
