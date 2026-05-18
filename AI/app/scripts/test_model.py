@@ -1,8 +1,9 @@
+import os
 import random
 
 import torch
-from game import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, Game  # Import your classes
-from model import Model, device
+from app.core.game import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, Game
+from app.core.model import Model, device
 
 
 def play_test_match(model_path):
@@ -13,6 +14,11 @@ def play_test_match(model_path):
     model = Model(
         board_size=BOARD_SIZE, actions_n=len(ACTIONS_COMBINED) * len(TEAM_ID)
     ).to(device)
+    
+    if not os.path.exists(model_path):
+        print(f"Error: {model_path} not found. Please train and save the model first.")
+        return
+
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()  # Set to evaluation mode (turns off Dropout/BatchNorm)
 
@@ -56,9 +62,7 @@ def play_test_match(model_path):
 
 
 if __name__ == "__main__":
-    try:
-        play_test_match("captcha_2.0_final.pth")
-    except FileNotFoundError:
-        print(
-            "Error: captcha_2.0_final.pth not found. Please train and save the model first."
-        )
+    # Ensure it looks in the correct project root directory
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    checkpoint_path = os.path.join(project_root, "checkpoints", "captcha_2.0_final.pth")
+    play_test_match(checkpoint_path)

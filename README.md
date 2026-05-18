@@ -100,19 +100,20 @@ Immediately after each move, Turing pauses to "study":
 - **Brain Sync**: Every 10 games, the Policy Net's weights are copied to the Target Net.
 - **League Checkpoints**: Every 500 games, a checkpoint (`.pth`) is saved to a "League" folder to serve as a future opponent.
 
-## Game Rewards Table
+## Game Rewards Table (0-Based Scale)
 
 | Category | Event | Reward | Description |
 | :--- | :--- | :---: | :--- |
-| **Wins** | Victory (Level 4) | `+20.0` | Character reaches the winning level. |
+| **Wins** | Victory (Level 3) | `+20.0` | Character reaches the winning level. |
 | | Victory (Trap) | `+20.0` | Enemy has no valid moves (stalemate win). |
 | | Missed Kill | `-10.0` | Penalty for failing to take an available winning move. |
-| **Movement** | Move to Level 3 | `+1.5` | Reaching the high-threat level. |
-| | Move to Level 2 | `+0.3` | Standard progression reward. |
-| **Building** | Setup Own Win | `+1.0` | Upgrading to Level 4 while adjacent and on Level 3. |
-| | Enemy Ladder (L4) | `-8.0` | Building a Level 4 platform for an adjacent enemy. |
-| | Enemy Ladder (L3) | `-2.0` | Building a Level 3 platform for an adjacent enemy. |
-| **Threats** | Enemy on L3 | `-0.5` | Penalty for every turn an enemy remains on Level 3. |
+| **Movement** | Move to Level 2 | `+1.5` | Reaching the high-threat level (one step from winning). |
+| | Move to Level 1 | `+0.3` | Standard progression reward. |
+| **Building** | Setup Own Win | `+1.0` | Building a Level 3 platform while adjacent to it and currently on Level 2. |
+| | Strategic Brick | `+1.0` | Building a Level 4 Brick (Dome) on a Level 3 cell adjacent to an enemy who is on Level 2. |
+| | Enemy Ladder (Win) | `-8.0` | Building a Level 3 platform for an adjacent enemy who is on Level 2. |
+| | Enemy Ladder (Threat) | `-2.0` | Building a Level 2 platform for an adjacent enemy who is on Level 1. |
+| **Threats** | Enemy on L2 | `-0.5` | Penalty for every turn an enemy remains on Level 2 (Threat Level). |
 | | Base Turn | `-0.05` | Small penalty to encourage efficiency. |
 | | Stalled (>40 turns) | `-0.2` | Increased penalty for long, unproductive games. |
 

@@ -21,16 +21,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
 def setup_directory():
-    """Ensure the script runs from the project root and can find the API directory."""
+    """Ensure the script runs from the project root and can find the app directory."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
-    api_dir = os.path.join(script_dir, "API")
-    if not os.path.exists(api_dir):
-        print(f"Error: API directory not found at {api_dir}")
+    app_dir = os.path.join(script_dir, "app")
+    if not os.path.exists(app_dir):
+        print(f"Error: app directory not found at {app_dir}")
         sys.exit(1)
-
-    return api_dir
 
 
 # Global list to keep track of tasks to prevent garbage collection
@@ -115,13 +113,14 @@ def update_external_api(public_url):
 
 
 async def main():
-    api_dir = setup_directory()
+    setup_directory() # Ensure we are in project root
 
     print("--- Starting CAPTCHA 2.0 API Services ---")
 
-    # Start Uvicorn (from API dir)
-    uvicorn_cmd = f"uvicorn main:app --host {HOST} --port {PORT}"
-    uvicorn_proc = await start_service(uvicorn_cmd, "Uvicorn", cwd=api_dir)
+    # Start Uvicorn using the new package structure
+    # We run from root, so the module path is app.api.main:app
+    uvicorn_cmd = f"uvicorn app.api.main:app --host {HOST} --port {PORT}"
+    uvicorn_proc = await start_service(uvicorn_cmd, "Uvicorn")
 
     # Start Ngrok
     ngrok_cmd = f"ngrok http {PORT}"
