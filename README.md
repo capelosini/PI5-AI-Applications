@@ -80,7 +80,7 @@ The CAPTCHA 2.0 AI utilizes a **Dueling Deep Q-Network (DQN)** architecture that
 
 ### Phase 2: The Action Loop (Gameplay)
 The game alternates turns on a 5x5 board:
-- **Observation**: The board is converted into a **3-layer state tensor** representing board levels, Turing's pieces, and the enemy's pieces.
+- **Observation**: The board is converted into a **5-layer state tensor** representing board levels, the exact positions of the two friendly characters, and the exact positions of the two enemy characters.
 - **Decision Making**:
     - **Turing's Turn**: Uses an **Epsilon-Greedy** strategy. Early on, it explores randomly; as it learns, it increasingly relies on the Policy Net for the "smartest" move.
     - **Lovelace's Turn**: Plays based on the opponent type selected in Phase 1.
@@ -88,7 +88,7 @@ The game alternates turns on a 5x5 board:
 
 ### Phase 3: The Learning Loop (Training)
 Immediately after each move, Turing pauses to "study":
-- **Batch Sampling**: 64 random moves are pulled from the Memory Buffer to break temporal correlation.
+- **Batch Sampling**: Using **Prioritized Experience Replay (PER)**, 64 moves are pulled from the Memory Buffer. It favors sampling transitions where the AI had the highest prediction error, ensuring it learns faster from its biggest surprises.
 - **Negamax Calculation**: The AI calculates the "True Value" of a move using the formula:  
   `Expected Q = Reward - (Gamma * Enemy's Future Score)`  
   This forces the AI to realize that setting up an opponent for a win is mathematically catastrophic.
