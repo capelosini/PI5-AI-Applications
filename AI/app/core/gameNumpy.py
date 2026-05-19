@@ -1,6 +1,6 @@
-# app/core/game.py
+# app/core/gameNumpy.py
 import random
-import torch
+import numpy as np
 from .constants import (
     BOARD_SIZE, 
     ACTIONS_COMBINED, 
@@ -36,7 +36,7 @@ class Game:
             self.char_positions[name] = starting_pos[i]
 
     def get_valid_mask(self):
-        mask = torch.zeros(128, dtype=torch.bool)
+        mask = np.zeros(128, dtype=bool)
         current_team_name = TEAM_ID[self.turn_team_id]
         my_chars = TEAMS[current_team_name]
 
@@ -84,23 +84,24 @@ class Game:
         return mask
 
     def get_state_tensor(self):
-        tensor = torch.zeros((5, BOARD_SIZE, BOARD_SIZE))
+        """Returns the game state as a NumPy array (5x5x5)."""
+        array = np.zeros((5, BOARD_SIZE, BOARD_SIZE), dtype=np.float32)
         for y in range(BOARD_SIZE):
             for x in range(BOARD_SIZE):
                 # Normalized (0.0 to 1.0)
-                tensor[0, y, x] = self.board[y][x] / float(MAX_LEVEL)
+                array[0, y, x] = self.board[y][x] / float(MAX_LEVEL)
 
         my_team = TEAMS[TEAM_ID[self.turn_team_id]]
         for i, name in enumerate(my_team):
             y, x = self.char_positions[name]
-            tensor[1 + i, y, x] = 1.0
+            array[1 + i, y, x] = 1.0
 
         enemy_team = TEAMS[TEAM_ID[3 - self.turn_team_id]]
         for i, name in enumerate(enemy_team):
             y, x = self.char_positions[name]
-            tensor[3 + i, y, x] = 1.0
+            array[3 + i, y, x] = 1.0
 
-        return tensor
+        return array
 
     def apply_action(self, action_id):
         reward = 0.0
@@ -180,7 +181,7 @@ class Game:
 
     def _check_if_win_possible(self, char_names):
         mask = self.get_valid_mask()
-        valid_indices = torch.where(mask)[0]
+        valid_indices = np.where(mask)[0]
 
         for idx in valid_indices:
             c_idx = idx // 64

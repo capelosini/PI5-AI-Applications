@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from app.core.constants import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, TEAMS
-from app.core.game import Game
+from app.core.gameTorch import Game
 from app.core.model import Model, device
 
 # --- HYPERPARAMETERS ---

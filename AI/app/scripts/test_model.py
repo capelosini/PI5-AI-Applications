@@ -2,7 +2,7 @@ import os
 import random
 
 import torch
-from app.core.game import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, Game
+from app.core.gameTorch import ACTIONS_COMBINED, BOARD_SIZE, TEAM_ID, Game
 from app.core.model import Model, device
 
 
