@@ -2,9 +2,9 @@
 import glob
 import os
 import random
-import numpy as np
 from collections import deque
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -30,8 +30,10 @@ MAX_EPISODES = 5000
 PROB_ALPHA = 0.6
 BETA_START = 0.4
 
+
 class PrioritizedReplayBuffer:
     """A simple Prioritized Experience Replay buffer using PyTorch Tensors for fast probability sampling."""
+
     def __init__(self, capacity, prob_alpha=0.6):
         self.prob_alpha = prob_alpha
         self.capacity = capacity
@@ -54,9 +56,9 @@ class PrioritizedReplayBuffer:
         if len(self.buffer) == self.capacity:
             prios = self.priorities
         else:
-            prios = self.priorities[:self.pos]
+            prios = self.priorities[: self.pos]
 
-        probs = prios ** self.prob_alpha
+        probs = prios**self.prob_alpha
         probs /= probs.sum()
 
         indices = torch.multinomial(probs, batch_size, replacement=True)
@@ -74,6 +76,7 @@ class PrioritizedReplayBuffer:
 
     def __len__(self):
         return len(self.buffer)
+
 
 # --- GLOBAL OBJECTS ---
 policy_net = Model(board_size=BOARD_SIZE, actions_n=128).to(device)
@@ -136,8 +139,8 @@ def optimize_model(beta):
         expected_q = reward_batch - (GAMMA * max_next_q * (1 - done_batch))
 
     # 4. Loss calculation with reduction='none' to get individual errors for PER
-    loss = F.smooth_l1_loss(current_q.squeeze(), expected_q, reduction='none')
-    
+    loss = F.smooth_l1_loss(current_q.squeeze(), expected_q, reduction="none")
+
     # 5. Update priorities in the buffer (td_error + small constant)
     td_errors = loss.detach().cpu().numpy()
     new_priorities = np.abs(td_errors) + 1e-5
@@ -159,9 +162,7 @@ def train():
     env = Game()
     win_history = deque(maxlen=100)
 
-    print(
-        f"[*] Starting Training (PER + Double DQN). Max Episodes: {MAX_EPISODES}"
-    )
+    print(f"[*] Starting Training (PER + Double DQN). Max Episodes: {MAX_EPISODES}")
     print(f"[*] Device: {device} | Index: 0-based | Strategy: Zero-Sum")
 
     for episode in range(1, MAX_EPISODES + 1):
