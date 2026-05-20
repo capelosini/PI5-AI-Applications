@@ -3,6 +3,10 @@ import { useNavigate } from "react-router";
 export default function MatchEntry({ match, onJoin }) {
   const navigate = useNavigate();
 
+  const isFinished = match.status === "FINISHED";
+  const turingClass = isFinished && match.winnerTeam === 1 ? "winner-glow" : (isFinished && match.winnerTeam === 2 ? "loser-dimmed" : "");
+  const lovelaceClass = isFinished && match.winnerTeam === 2 ? "winner-glow" : (isFinished && match.winnerTeam === 1 ? "loser-dimmed" : "");
+
   return (
     <div className="match-card">
       <div className="match-info">
@@ -12,7 +16,7 @@ export default function MatchEntry({ match, onJoin }) {
         </span>
       </div>
       <div className="match-players">
-        <div className="player-slot">
+        <div className={`player-slot ${turingClass}`}>
           <span className="team-label">Turing:</span>
           <div className="player-display">
             {match.turingPlayer?.aiPlayerAvatar && (
@@ -21,7 +25,7 @@ export default function MatchEntry({ match, onJoin }) {
             <span className="player-name">{match.turingName}</span>
           </div>
         </div>
-        <div className="player-slot">
+        <div className={`player-slot ${lovelaceClass}`}>
           <span className="team-label">Lovelace:</span>
           <div className="player-display">
             {match.lovelacePlayer?.aiPlayerAvatar && (
