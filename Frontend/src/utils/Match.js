@@ -4,15 +4,15 @@ import Cell from "./Cell";
 
 export default class Match {
     constructor(data) {
-        this.id = data.id;
+        this.id = data.id || data.game_id;
         this.status = data.status;
         this.turingPlayer = data.turing_player ? new Player(data.turing_player) : null;
         this.lovelacePlayer = data.lovelace_player ? new Player(data.lovelace_player) : null;
         this.spectators = Spectator.fromArray(data.spectators);
         this.board = Cell.fromBoard(data.board);
-        this.currentTurnNumber = data.current_turn_number;
-        this.currentTurnTeamId = data.current_turn_team_id;
-        this.currentTurnPhase = data.current_turn_phase;
+        this.currentTurnNumber = data.current_turn_number ?? data.turn_number;
+        this.currentTurnTeamId = data.current_turn_team_id ?? data.turn_team_id;
+        this.currentTurnPhase = data.current_turn_phase ?? data.turn_phase;
         this.winnerTeam = data.winner_team;
         this.winnerPlayerId = data.winner_player_id;
         this.lostPlayerId = data.lost_player_id;
@@ -21,6 +21,21 @@ export default class Match {
         this.createdAt = data.created_at ? new Date(data.created_at) : null;
         this.createdBy = data.created_by;
         this.autoStart = data.auto_start;
+        this.lastAction = data.last_action;
+    }
+
+    updateFromWS(data) {
+        const updated = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        
+        if (data.board) updated.board = Cell.fromBoard(data.board);
+        if (data.turn_number !== undefined) updated.currentTurnNumber = data.turn_number;
+        if (data.turn_phase !== undefined) updated.currentTurnPhase = data.turn_phase;
+        if (data.turn_team_id !== undefined) updated.currentTurnTeamId = data.turn_team_id;
+        if (data.status) updated.status = data.status;
+        if (data.winner_team !== undefined) updated.winnerTeam = data.winner_team;
+        if (data.last_action) updated.lastAction = data.last_action;
+        
+        return updated;
     }
 
     get shortId() {

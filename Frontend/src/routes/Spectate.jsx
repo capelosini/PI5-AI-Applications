@@ -15,7 +15,9 @@ export default function Spectate() {
   const [spectators, setSpectators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [spectatorToken, setSpectatorToken] = useState(SpectatorManager.getSession(gameId));
+  const [spectatorToken, setSpectatorToken] = useState(
+    SpectatorManager.getSession(gameId),
+  );
   const [isLive, setIsLive] = useState(false);
   const wsRef = useRef(null);
 
@@ -29,14 +31,18 @@ export default function Spectate() {
       }
 
       const active = AccountManager.getActivePlayer();
-      const name = active?.aiPlayerName || `Spectator_${Math.random().toString(36).substring(7)}`;
-      const avatar = active?.aiPlayerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`;
-      
+      const name =
+        active?.aiPlayerName ||
+        `Spectator_${Math.random().toString(36).substring(7)}`;
+      const avatar =
+        active?.aiPlayerAvatar ||
+        `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`;
+
       const spectatorData = await API.games.addSpectator(gameId, {
         spectator_name: name,
-        spectator_avatar: avatar
+        spectator_avatar: avatar,
       });
-      
+
       SpectatorManager.saveSession(gameId, spectatorData.accessToken);
       setSpectatorToken(spectatorData.accessToken);
       return spectatorData.accessToken;
@@ -44,7 +50,7 @@ export default function Spectate() {
       console.error("Failed to register as spectator:", err);
       // If it failed because of an invalid token, we might want to clear it
       if (err.message.includes("401") || err.message.includes("403")) {
-         SpectatorManager.removeSession(gameId);
+        SpectatorManager.removeSession(gameId);
       }
       setError("Failed to register as spectator. " + err.message);
       return null;
@@ -72,11 +78,39 @@ export default function Spectate() {
           const data = JSON.parse(event.data);
           console.log("WebSocket message received:", data);
 
-          // Handle full game state update
-          if (data.id) {
-            const updatedMatch = new Match(data);
-            setMatch(updatedMatch);
-            setSpectators(updatedMatch.spectators);
+          if (data.game_id || data.id) {
+            setMatch((prevMatch) => {
+              if (!prevMatch) return new Match(data);
+
+              // If the status changes, we should disconnect and fetch the full state
+              if (data.status && data.status !== prevMatch.status) {
+                console.log(
+                  `Status changed from ${prevMatch.status} to ${data.status}, refreshing...`,
+                );
+
+                setTimeout(() => {
+                  if (wsRef.current) wsRef.current.close();
+                  fetchGameStatus().then((updatedMatch) => {
+                    if (updatedMatch && updatedMatch.status !== "FINISHED") {
+                      const token = SpectatorManager.getSession(gameId);
+                      if (token) connectWebSocket(token);
+                    }
+                  });
+                }, 0);
+
+                return prevMatch;
+              }
+
+              // Handle full object if provided (old format or full update)
+              if (data.id) {
+                const updated = new Match(data);
+                setSpectators(updated.spectators);
+                return updated;
+              }
+
+              // Partial update from new WS format
+              return prevMatch.updateFromWS(data);
+            });
           }
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
@@ -106,6 +140,7 @@ export default function Spectate() {
       setMatch(data);
       setSpectators(data.spectators);
       setError(null);
+      return data;
     } catch (err) {
       console.error("Failed to fetch game status:", err);
       setError("Failed to load game state. Please try again.");
@@ -123,12 +158,15 @@ export default function Spectate() {
     const initSpectating = async () => {
       setLoading(true);
       // First fetch current status
-      await fetchGameStatus();
+      const currentMatch = await fetchGameStatus();
 
       // Then register as spectator to get WS token
-      const token = await registerAsSpectator();
-      if (token) {
-        connectWebSocket(token);
+      // Don't connect if match is already finished
+      if (currentMatch && currentMatch.status !== "FINISHED") {
+        const token = await registerAsSpectator();
+        if (token) {
+          connectWebSocket(token);
+        }
       }
       setLoading(false);
     };
@@ -141,6 +179,18 @@ export default function Spectate() {
       }
     };
   }, [fetchGameStatus, registerAsSpectator, connectWebSocket]);
+
+  // Periodic update for spectators and to ensure sync
+  useEffect(() => {
+    if (!gameId || (match && match.status === "FINISHED")) return;
+
+    const interval = setInterval(() => {
+      console.log("Periodic sync/spectator list update");
+      fetchGameStatus();
+    }, 5000); // Every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [gameId, match?.status, fetchGameStatus]);
 
   if (loading && !match) {
     return (
