@@ -14,15 +14,21 @@ export default function MatchEntry({ match, onJoin }) {
       <div className="match-players">
         <div className="player-slot">
           <span className="team-label">Turing:</span>
-          <span className="player-name">
-            {match.turingName}
-          </span>
+          <div className="player-display">
+            {match.turingPlayer?.aiPlayerAvatar && (
+              <img src={match.turingPlayer.aiPlayerAvatar} alt="" className="mini-avatar" />
+            )}
+            <span className="player-name">{match.turingName}</span>
+          </div>
         </div>
         <div className="player-slot">
           <span className="team-label">Lovelace:</span>
-          <span className="player-name">
-            {match.lovelaceName}
-          </span>
+          <div className="player-display">
+            {match.lovelacePlayer?.aiPlayerAvatar && (
+              <img src={match.lovelacePlayer.aiPlayerAvatar} alt="" className="mini-avatar" />
+            )}
+            <span className="player-name">{match.lovelaceName}</span>
+          </div>
         </div>
       </div>
       <div

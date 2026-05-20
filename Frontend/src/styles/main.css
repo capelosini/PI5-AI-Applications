@@ -249,6 +249,21 @@ main {
     text-overflow: ellipsis;
 }
 
+.player-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mini-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #333;
+    border: 1px solid #444;
+}
+
 .btn-sm {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
@@ -568,3 +583,55 @@ footer {
     color: #666;
     font-size: 0.9rem;
 }
+
+/* Spectators Styles */
+.spectators-section {
+    width: 100%;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #333;
+    text-align: left;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    color: #ff4d4d;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+}
+
+.spectator-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.spectator-badge {
+    background-color: #25252d;
+    border: 1px solid #333;
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.spectator-badge:hover {
+    transform: scale(1.05);
+    border-color: #ff4d4d;
+}
+
+.spectator-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #333;
+}
+
+.spectator-name {
+    font-size: 0.9rem;
+    color: #ddd;
+    font-weight: 500;
+}
+

@@ -1,20 +1,110 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
-import { API, setAuthToken } from "@/utils/API";
+import { API, setAuthToken, getWebSocketUrl } from "@/utils/API";
 import GameBoard from "@/components/GameBoard";
+import SpectatorList from "@/components/SpectatorList";
 import AccountManager from "@/utils/AccountManager";
+import SpectatorManager from "@/utils/SpectatorManager";
+import Match from "@/utils/Match";
+import Spectator from "@/utils/Spectator";
 
 export default function Spectate() {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const [match, setMatch] = useState(null);
+  const [spectators, setSpectators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [spectatorToken, setSpectatorToken] = useState(SpectatorManager.getSession(gameId));
+  const [isLive, setIsLive] = useState(false);
+  const wsRef = useRef(null);
+
+  const registerAsSpectator = useCallback(async () => {
+    try {
+      const existingToken = SpectatorManager.getSession(gameId);
+      if (existingToken) {
+        console.log("Reusing existing spectator token");
+        setSpectatorToken(existingToken);
+        return existingToken;
+      }
+
+      const active = AccountManager.getActivePlayer();
+      const name = active?.aiPlayerName || `Spectator_${Math.random().toString(36).substring(7)}`;
+      const avatar = active?.aiPlayerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`;
+      
+      const spectatorData = await API.games.addSpectator(gameId, {
+        spectator_name: name,
+        spectator_avatar: avatar
+      });
+      
+      SpectatorManager.saveSession(gameId, spectatorData.accessToken);
+      setSpectatorToken(spectatorData.accessToken);
+      return spectatorData.accessToken;
+    } catch (err) {
+      console.error("Failed to register as spectator:", err);
+      // If it failed because of an invalid token, we might want to clear it
+      if (err.message.includes("401") || err.message.includes("403")) {
+         SpectatorManager.removeSession(gameId);
+      }
+      setError("Failed to register as spectator. " + err.message);
+      return null;
+    }
+  }, [gameId]);
+
+  const connectWebSocket = useCallback(
+    (token) => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
+      const url = getWebSocketUrl(`/ws/games/${gameId}?token=${token}`);
+      console.log("Connecting to WebSocket:", url);
+      const ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        setIsLive(true);
+        setError(null);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("WebSocket message received:", data);
+
+          // Handle full game state update
+          if (data.id) {
+            const updatedMatch = new Match(data);
+            setMatch(updatedMatch);
+            setSpectators(updatedMatch.spectators);
+          }
+        } catch (err) {
+          console.error("Error parsing WebSocket message:", err);
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket disconnected", event.reason);
+        setIsLive(false);
+        // Reconnect logic could go here if needed
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        setIsLive(false);
+        setError("Real-time connection lost. Updates may be delayed.");
+      };
+
+      wsRef.current = ws;
+    },
+    [gameId],
+  );
 
   const fetchGameStatus = useCallback(async () => {
     try {
       const data = await API.games.get(gameId);
       setMatch(data);
+      setSpectators(data.spectators);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch game status:", err);
@@ -29,13 +119,33 @@ export default function Spectate() {
     if (active?.accessToken) {
       setAuthToken(active.accessToken);
     }
-    fetchGameStatus();
-  }, [fetchGameStatus]);
+
+    const initSpectating = async () => {
+      setLoading(true);
+      // First fetch current status
+      await fetchGameStatus();
+
+      // Then register as spectator to get WS token
+      const token = await registerAsSpectator();
+      if (token) {
+        connectWebSocket(token);
+      }
+      setLoading(false);
+    };
+
+    initSpectating();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [fetchGameStatus, registerAsSpectator, connectWebSocket]);
 
   if (loading && !match) {
     return (
       <div className="home-container">
-        <p>Loading game state...</p>
+        <p>Initializing spectate mode...</p>
       </div>
     );
   }
@@ -44,6 +154,7 @@ export default function Spectate() {
     try {
       setLoading(true);
       await API.games.start(gameId);
+      // WS will likely update the state, but we can fetch just in case
       await fetchGameStatus();
     } catch (err) {
       console.error("Failed to start match:", err);
@@ -105,7 +216,19 @@ export default function Spectate() {
       </header>
 
       {error && (
-        <p style={{ color: "#ff4d4d", marginBottom: "1rem" }}>{error}</p>
+        <div
+          style={{
+            padding: "0.8rem",
+            backgroundColor: "rgba(255, 77, 77, 0.1)",
+            border: "1px solid #ff4d4d",
+            borderRadius: "8px",
+            color: "#ff4d4d",
+            marginBottom: "1.5rem",
+            fontSize: "0.9rem",
+          }}
+        >
+          {error}
+        </div>
       )}
 
       {match && (
@@ -122,11 +245,18 @@ export default function Spectate() {
                 textAlign: "center",
               }}
             >
-              <h2 style={{ color: "#2e7d32", margin: "0 0 0.5rem 0", fontSize: "1.8rem" }}>
+              <h2
+                style={{
+                  color: "#2e7d32",
+                  margin: "0 0 0.5rem 0",
+                  fontSize: "1.8rem",
+                }}
+              >
                 Match Finished!
               </h2>
               <p style={{ fontSize: "1.3rem", margin: 0 }}>
-                Winner: <strong style={{ color: "#fdfdfd" }}>{match.winnerName}</strong>
+                Winner:{" "}
+                <strong style={{ color: "#fdfdfd" }}>{match.winnerName}</strong>
               </p>
               <p style={{ color: "#888", marginTop: "0.5rem" }}>
                 Team: {match.winnerTeam === 1 ? "Turing" : "Lovelace"}
@@ -198,16 +328,42 @@ export default function Spectate() {
 
             <GameBoard board={match.board} />
 
-            <code
+            <div
               style={{
-                fontSize: "0.7rem",
-                color: "#666",
-                wordBreak: "break-all",
+                display: "flex",
+                justifyContent: "space-between",
+                width: "100%",
+                alignItems: "center",
               }}
             >
-              ID: {match.id}
-            </code>
+              <code
+                style={{
+                  fontSize: "0.7rem",
+                  color: "#666",
+                  wordBreak: "break-all",
+                }}
+              >
+                ID: {match.id}
+              </code>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <div
+                  style={{
+                    width: "8px",
+                    height: "8px",
+                    backgroundColor: isLive ? "#2e7d32" : "#ff4d4d",
+                    borderRadius: "50%",
+                  }}
+                ></div>
+                <span style={{ fontSize: "0.7rem", color: "#666" }}>
+                  {isLive ? "Live" : "Disconnected"}
+                </span>
+              </div>
+            </div>
           </div>
+
+          <SpectatorList spectators={spectators} />
         </>
       )}
     </div>

@@ -10,7 +10,13 @@ export default function PlayerList({ onCancel }) {
         const fetchPlayers = async () => {
             try {
                 const data = await API.players.list();
-                setPlayers(data);
+                const sorted = data.sort((a, b) => {
+                    const rateA = a.gamesPlayed > 0 ? (a.gamesWon / a.gamesPlayed) : 0;
+                    const rateB = b.gamesPlayed > 0 ? (b.gamesWon / b.gamesPlayed) : 0;
+                    if (rateB !== rateA) return rateB - rateA;
+                    return b.gamesWon - a.gamesWon;
+                });
+                setPlayers(sorted);
             } catch (err) {
                 setError("Failed to load players.");
                 console.error(err);

@@ -36,6 +36,10 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+export const getWebSocketUrl = (path) => {
+  return `${BASE_URL}${path}`;
+};
+
 export const API = {
   games: {
     list: async (params = {}) => {
