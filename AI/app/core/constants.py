@@ -1,6 +1,3 @@
-# app/core/constants.py
-import torch
-
 BOARD_SIZE = 5
 DIRECTIONS = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
 PLAYERS_LIST = ["beatriz", "karin", "claro", "rey"]

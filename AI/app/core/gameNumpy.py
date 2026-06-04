@@ -1,17 +1,19 @@
-# app/core/gameNumpy.py
 import random
+
 import numpy as np
+
 from .constants import (
-    BOARD_SIZE, 
-    ACTIONS_COMBINED, 
-    PLAYERS_LIST, 
-    TEAMS, 
-    TEAM_ID,
+    ACTIONS_COMBINED,
+    BOARD_SIZE,
+    LEVEL_BRICK,
     LEVEL_GROUND,
     LEVEL_WIN,
-    LEVEL_BRICK,
-    MAX_LEVEL
+    MAX_LEVEL,
+    PLAYERS_LIST,
+    TEAM_ID,
+    TEAMS,
 )
+
 
 class Game:
     def __init__(self):
@@ -24,7 +26,9 @@ class Game:
 
     def start(self):
         # 0=Ground, 3=Win, 4=Brick
-        self.board = [[LEVEL_GROUND for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+        self.board = [
+            [LEVEL_GROUND for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)
+        ]
         self.status = "PLAYING"
         self.turn_team_id = 1
         self.turn_count = 0
@@ -50,12 +54,14 @@ class Game:
 
                 if 0 <= ny < BOARD_SIZE and 0 <= nx < BOARD_SIZE:
                     target_level = self.board[ny][nx]
-                    
+
                     # Cannot move to a brick level
                     if target_level >= LEVEL_BRICK:
                         continue
 
-                    is_occupied = any(p == (ny, nx) for p in self.char_positions.values())
+                    is_occupied = any(
+                        p == (ny, nx) for p in self.char_positions.values()
+                    )
 
                     # Rule: currentCellLevel >= nextCellLevel - 1
                     if target_level <= (curr_level + 1) and not is_occupied:
@@ -74,10 +80,13 @@ class Game:
                                     is_upgrade_occupied = True
                                 else:
                                     for p_name, p_pos in self.char_positions.items():
-                                        if p_name != char_name and p_pos == (un_y, un_x):
+                                        if p_name != char_name and p_pos == (
+                                            un_y,
+                                            un_x,
+                                        ):
                                             is_upgrade_occupied = True
                                             break
-                                
+
                                 if not is_upgrade_occupied:
                                     mask[char_idx * 64 + act_idx] = True
 

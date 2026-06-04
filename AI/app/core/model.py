@@ -1,8 +1,8 @@
-# app/core/model.py
 from torch import cuda, device, nn
 
 # check gpu
 device = device("cuda" if cuda.is_available() else "cpu")
+
 
 class Model(nn.Module):
     def __init__(self, board_size=5, actions_n=128):
