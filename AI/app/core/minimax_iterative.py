@@ -147,7 +147,7 @@ def evaluate_board(game, team_id):
 
     return score
 
-def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_time, time_limit, current_hash):
+def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_time, time_limit, current_hash, killers):
     if time.time() - start_time > time_limit: raise TimeoutError()
 
     if current_hash in TRANSPOSITION_TABLE:
@@ -163,10 +163,10 @@ def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_t
     pv_move = None
     if current_hash in TRANSPOSITION_TABLE: pv_move = TRANSPOSITION_TABLE[current_hash][2]
     
-    killers = KILLER_MOVES.get(depth, [])
+    depth_killers = killers.get(depth, [])
     def move_priority(m):
         if m == pv_move: return 100000
-        if m in killers: return 10000
+        if m in depth_killers: return 10000
         char_idx, act_idx = m // 64, m % 64
         char_name = TEAMS[TEAM_ID[game.turn_team_id]][char_idx]
         pos = game.char_positions[char_name]
@@ -183,11 +183,11 @@ def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_t
             undo, next_hash = make_move(game, m, current_hash)
             try:
                 if first_move:
-                    v, _ = minimax_alpha_beta(game, depth-1, alpha, beta, False, team_id, start_time, time_limit, next_hash)
+                    v, _ = minimax_alpha_beta(game, depth-1, alpha, beta, False, team_id, start_time, time_limit, next_hash, killers)
                 else:
-                    v, _ = minimax_alpha_beta(game, depth-1, alpha, alpha+1, False, team_id, start_time, time_limit, next_hash)
+                    v, _ = minimax_alpha_beta(game, depth-1, alpha, alpha+1, False, team_id, start_time, time_limit, next_hash, killers)
                     if v > alpha and v < beta:
-                        v, _ = minimax_alpha_beta(game, depth-1, v, beta, False, team_id, start_time, time_limit, next_hash)
+                        v, _ = minimax_alpha_beta(game, depth-1, v, beta, False, team_id, start_time, time_limit, next_hash, killers)
                 
                 unmake_move(game, undo)
                 if v > max_v:
@@ -196,7 +196,7 @@ def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_t
                 alpha = max(alpha, v)
                 first_move = False
                 if beta <= alpha:
-                    KILLER_MOVES[depth] = ([m] + killers)[:2]
+                    killers[depth] = ([m] + depth_killers)[:2]
                     break
             except TimeoutError: unmake_move(game, undo); raise TimeoutError()
         TRANSPOSITION_TABLE[current_hash] = (depth, max_v, best_move)
@@ -207,11 +207,11 @@ def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_t
             undo, next_hash = make_move(game, m, current_hash)
             try:
                 if first_move:
-                    v, _ = minimax_alpha_beta(game, depth-1, alpha, beta, True, team_id, start_time, time_limit, next_hash)
+                    v, _ = minimax_alpha_beta(game, depth-1, alpha, beta, True, team_id, start_time, time_limit, next_hash, killers)
                 else:
-                    v, _ = minimax_alpha_beta(game, depth-1, beta-1, beta, True, team_id, start_time, time_limit, next_hash)
+                    v, _ = minimax_alpha_beta(game, depth-1, beta-1, beta, True, team_id, start_time, time_limit, next_hash, killers)
                     if v < beta and v > alpha:
-                        v, _ = minimax_alpha_beta(game, depth-1, alpha, v, True, team_id, start_time, time_limit, next_hash)
+                        v, _ = minimax_alpha_beta(game, depth-1, alpha, v, True, team_id, start_time, time_limit, next_hash, killers)
                 
                 unmake_move(game, undo)
                 if v < min_v:
@@ -220,16 +220,16 @@ def minimax_alpha_beta(game, depth, alpha, beta, is_maximizing, team_id, start_t
                 beta = min(beta, v)
                 first_move = False
                 if beta <= alpha:
-                    KILLER_MOVES[depth] = ([m] + killers)[:2]
+                    killers[depth] = ([m] + depth_killers)[:2]
                     break
             except TimeoutError: unmake_move(game, undo); raise TimeoutError()
         TRANSPOSITION_TABLE[current_hash] = (depth, min_v, best_move)
         return min_v, best_move
 
 def iterative_deepening_minimax(game, team_id, time_limit=4.0):
-    global TRANSPOSITION_TABLE, KILLER_MOVES
+    global TRANSPOSITION_TABLE
     if len(TRANSPOSITION_TABLE) > 1000000: TRANSPOSITION_TABLE = {}
-    KILLER_MOVES = {}
+    killers = {}
     
     start_time = time.time()
     current_hash = get_full_zobrist(game)
@@ -240,7 +240,7 @@ def iterative_deepening_minimax(game, team_id, time_limit=4.0):
     depth = 1
     while True:
         try:
-            _, m = minimax_alpha_beta(game, depth, -float('inf'), float('inf'), True, team_id, start_time, time_limit, current_hash)
+            _, m = minimax_alpha_beta(game, depth, -float('inf'), float('inf'), True, team_id, start_time, time_limit, current_hash, killers)
             if m is not None: best_m = m
             depth += 1
             if depth > 40: break

@@ -18,7 +18,7 @@ async def health():
 
 
 @app.post("/move")
-async def move(body: AITurnRequest):
+def move(body: AITurnRequest):
     if body.turn_phase == TurnPhase.SETUP:
         return choose_setup(body.board)
     else:
