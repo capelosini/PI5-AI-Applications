@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AccountManager from "@/utils/AccountManager";
-import { API } from "@/utils/API";
+import { API, setAuthToken } from "@/utils/API";
 
 const TEAM_NAME = "HoneyPot";
 
