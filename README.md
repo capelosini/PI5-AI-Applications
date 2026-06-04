@@ -7,8 +7,8 @@ A distributed AI strategy game project featuring a React-based frontend, a FastA
 The repository is organized into three main components:
 
 - **AI/**: The core logic for the AI player.
-  - **AI/**: Contains the PyTorch Dueling DQN model implementation (`model.py`) and training scripts.
-  - **API/**: A FastAPI service that exposes the AI's moves via HTTP endpoints.
+  - **app/core/**: Contains the game state representations (NumPy/PyTorch versions), constants, the new Iterative Deepening Minimax engine (`minimax_iterative.py`), and the legacy model (`model.py`).
+  - **app/api/**: A FastAPI service that exposes the AI's moves via HTTP endpoints.
   - **run.py**: A convenience script to start the AI API and expose it via Ngrok for external game servers.
 - **Frontend/**: A modern web interface for spectating and managing matches.
   - Built with **React 19**, **Vite**, and **React Router 7**.
@@ -67,9 +67,28 @@ The repository is organized into three main components:
 
 ---
 
-## 🧠 AI Strategy: Dueling DQN Workflow
+## 🧠 AI Strategy: Iterative Deepening Minimax (New)
 
-The CAPTCHA 2.0 AI utilizes a **Dueling Deep Q-Network (DQN)** architecture that learns to play through millions of self-play simulations. Its training and prediction cycle is divided into four distinct phases:
+The CAPTCHA 2.0 AI has been upgraded to a high-performance **Iterative Deepening Minimax** engine with **Alpha-Beta Pruning** and **Principal Variation Search (PVS)**. It is implemented in [AI/app/core/minimax_iterative.py](AI/app/core/minimax_iterative.py).
+
+### Core Search Components:
+- **Iterative Deepening**: Instead of searching to a fixed depth, the search begins at depth 1 and incrementally deepens. This guarantees that the AI utilizes its full allocated time limit (e.g., 4.0 seconds) to find the best possible move without timing out.
+- **Alpha-Beta Pruning & Principal Variation Search (PVS)**: Limits the number of nodes evaluated by pruning branches that are mathematically proven to be worse than previously analyzed options. PVS further optimizes search by utilizing a narrow search window on non-first moves.
+- **Zobrist Hashing & Transposition Table**: Employs a 64-bit Zobrist Hash to represent board states. Search evaluations are cached in a global Transposition Table, preventing redundant evaluations of transposed states.
+- **Move Ordering**: Optimizes Alpha-Beta pruning by prioritizing the Principal Variation (PV) move from the transposition table, followed by *Killer Moves* (moves that caused recent cutoffs), and heights-based move heuristics.
+- **State Undo/Redo**: Mutates states in-place and rolls back with `unmake_move` instead of copying the game board objects recursively, significantly reducing memory and CPU overhead.
+
+### Heuristic Evaluation Function:
+When the search depth is reached, the board is scored statically:
+- **Win/Loss**: Evaluates to $+1,000,000$ (win) or $-1,000,000$ (loss).
+- **Builder Elevation**: Grants $+400$ points for each level of our builders, plus a $+500$ bonus for level 2, and $+10,000$ if they reach level 3.
+- **Proximity to Center**: Grants bonus points for staying near the center cells.
+- **Enemy Penalties**: Deducts points based on enemy builder elevations (e.g., $-300$ per level, and $-9,000$ for enemy level 3) to prompt blocking behavior.
+
+<details>
+<summary>⚠️ Legacy AI Strategy: Dueling DQN Workflow (Old Version)</summary>
+
+The CAPTCHA 2.0 AI previously utilized a **Dueling Deep Q-Network (DQN)** architecture that learns to play through millions of self-play simulations. Its training and prediction cycle is divided into four distinct phases:
 
 ### Phase 1: The Setup (Pre-Match)
 - **Neural Architecture**: The system initializes three distinct networks:
@@ -116,6 +135,7 @@ Immediately after each move, Turing pauses to "study":
 | **Threats** | Enemy on L2 | `-0.5` | Penalty for every turn an enemy remains on Level 2 (Threat Level). |
 | | Base Turn | `-0.05` | Small penalty to encourage efficiency. |
 | | Stalled (>40 turns) | `-0.2` | Increased penalty for long, unproductive games. |
+</details>
 
 ---
 
@@ -138,5 +158,6 @@ The Frontend includes a dedicated **Spectate** route (`/spectate/:gameId`) that 
 
 - **Frontend**: React, Vite, CSS (Vanilla), React Router.
 - **AI Backend**: Python, FastAPI, Uvicorn, Ngrok.
-- **Deep Learning**: PyTorch (Dueling DQN).
+- **AI Search Strategy**: Iterative Deepening Minimax (with Alpha-Beta, PVS, and Zobrist Hashing).
+- **Deep Learning (Legacy)**: PyTorch (Dueling DQN).
 - **Deployment**: Environment-based configuration, distributed via REST APIs.

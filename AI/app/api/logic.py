@@ -2,8 +2,7 @@
 import os
 import random
 from typing import Optional
-
-import torch
+import numpy as np
 
 from app.core.constants import (
     ACTIONS_COMBINED,
@@ -14,36 +13,10 @@ from app.core.constants import (
     TEAM_ID,
     TEAMS,
 )
-from app.core.gameTorch import Game
-from app.core.model import Model, device
+from app.core.gameNumpy import Game
+from app.core.minimax_iterative import iterative_deepening_minimax
 
 from .schemas import Cell, PlayerTurnResponse, Position, SetupResponse
-
-# Instância global do modelo
-model_instance = None
-
-
-def load_model():
-    """Carrega o modelo AI se ainda não estiver carregado."""
-    global model_instance
-    if model_instance is None:
-        project_root = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-        model_path = os.path.join(project_root, "checkpoints", "captcha_2.0_final.pth")
-
-        model_instance = Model(board_size=BOARD_SIZE, actions_n=128).to(device)
-
-        try:
-            model_instance.load_state_dict(torch.load(model_path, map_location=device))
-            model_instance.eval()
-            print(f"[*] Modelo AI carregado de: {model_path}", flush=True)
-        except Exception as e:
-            print(
-                f"[!] Erro ao carregar o modelo AI (Provavelmente incompatível com 0-index): {e}",
-                flush=True,
-            )
-            model_instance = None
 
 
 def choose_setup(board: list[list[Cell]]) -> SetupResponse:
@@ -66,11 +39,7 @@ def choose_setup(board: list[list[Cell]]) -> SetupResponse:
 
 
 def choose_turn(board: list[list[Cell]], team_id: int) -> Optional[PlayerTurnResponse]:
-    if model_instance is None:
-        # Fallback para jogada aleatória se o modelo não carregar
-        return random_fallback(board, team_id)
-
-    # 1. Converter o estado da API (já é 0-based) diretamente para o Game
+    # 1. Convert the state from the API (0-based) directly to the Game state format
     ai_board = [[cell.level for cell in row] for row in board]
     char_positions = {}
 
@@ -91,15 +60,19 @@ def choose_turn(board: list[list[Cell]], team_id: int) -> Optional[PlayerTurnRes
     game.char_positions = char_positions
     game.turn_team_id = team_id
 
+    # 2. Check if we have valid moves
     mask = game.get_valid_mask()
-    if not mask.any():
+    if not np.any(mask):
         return None
 
-    state_tensor = game.get_state_tensor().unsqueeze(0).to(device)
-    with torch.no_grad():
-        q_values = model_instance(state_tensor)
-        q_values[0][~mask] = -1e9
-        action_id = torch.argmax(q_values).item()
+    try:
+        # Run iterative deepening minimax search with a safe time limit (e.g. 3.8 seconds)
+        action_id, depth = iterative_deepening_minimax(game, team_id, time_limit=3.8)
+        if action_id is None:
+            return random_fallback(board, team_id)
+    except Exception as e:
+        print(f"[!] Error running Minimax search: {e}", flush=True)
+        return random_fallback(board, team_id)
 
     my_chars = TEAMS[current_team_name]
     char_name = my_chars[action_id // 64]
@@ -119,8 +92,8 @@ def choose_turn(board: list[list[Cell]], team_id: int) -> Optional[PlayerTurnRes
 def random_fallback(
     board: list[list[Cell]], team_id: int
 ) -> Optional[PlayerTurnResponse]:
-    """Fallback simples caso o modelo falhe."""
-    print("Using fallback AI")
+    """Simple fallback if minimax search fails."""
+    print("Using fallback AI", flush=True)
     ai_board = [[cell.level for cell in row] for row in board]
     char_positions = {}
     for r in range(BOARD_SIZE):
@@ -135,7 +108,7 @@ def random_fallback(
     game.char_positions = char_positions
     game.turn_team_id = team_id
     mask = game.get_valid_mask()
-    valid_indices = torch.where(mask)[0]
+    valid_indices = np.where(mask)[0]
     if len(valid_indices) == 0:
         return None
 
@@ -153,6 +126,3 @@ def random_fallback(
         move_to=Position(row=dst_y, col=dst_x),
         mentor_at=Position(row=men_y, col=men_x),
     )
-
-
-load_model()
