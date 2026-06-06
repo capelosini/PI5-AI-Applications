@@ -1,16 +1,27 @@
 import { useState } from "react";
 
-export default function JoinRoomForm({ activePlayer, onSubmit, onCancel }) {
+export default function JoinRoomForm({ activePlayer, match, onSubmit, onCancel }) {
+  const hasTuring = match ? !!match.turingPlayer : false;
+  const hasLovelace = match ? !!match.lovelacePlayer : false;
+
+  const getInitialTeamSlot = () => {
+    if (hasTuring && !hasLovelace) return 2;
+    if (!hasTuring && hasLovelace) return 1;
+    return 1;
+  };
+
+  const isLocked = match ? (hasTuring !== hasLovelace) : false;
+
   const [config, setConfig] = useState({
     player_id: activePlayer?.id || 0,
-    team_slot: 1,
+    team_slot: getInitialTeamSlot(),
   });
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setConfig((prev) => ({
       ...prev,
-      [name]: type === "number" ? parseInt(value) : value,
+      [name]: name === "team_slot" ? parseInt(value, 10) : (type === "number" ? parseInt(value) : value),
     }));
   };
 
@@ -46,10 +57,20 @@ export default function JoinRoomForm({ activePlayer, onSubmit, onCancel }) {
           name="team_slot"
           value={config.team_slot}
           onChange={handleChange}
+          disabled={isLocked}
         >
-          <option value={1}>Team 1 (Turing)</option>
-          <option value={2}>Team 2 (Lovelace)</option>
+          <option value={1} disabled={hasTuring}>
+            Team 1 (Turing){hasTuring ? " - Taken" : ""}
+          </option>
+          <option value={2} disabled={hasLovelace}>
+            Team 2 (Lovelace){hasLovelace ? " - Taken" : ""}
+          </option>
         </select>
+        {isLocked && (
+          <span style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.3rem", display: "block" }}>
+            The other team is occupied. The empty slot has been locked in automatically.
+          </span>
+        )}
       </div>
 
       <div className="button-group" style={{ marginTop: "1.5rem" }}>

@@ -10,6 +10,7 @@ import { API, setAuthToken } from "@/utils/API";
 
 export default function Home() {
   const [view, setView] = useState("lobby"); // "lobby", "create", "join", "accounts", "players"
+  const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [matches, setMatches] = useState([]);
 
   const [loading, setLoading] = useState(false);
@@ -63,15 +64,23 @@ export default function Home() {
   };
 
   const handleJoinRoom = async (config) => {
-    // Note: Joining usually requires a gameId.
-    // This is a simplified placeholder; real join logic would need the ID from state or selection.
-    console.log("Joining room with config:", config);
-    setView("lobby");
-    fetchMatches();
+    if (!selectedMatchId) {
+      alert("No match selected to join.");
+      return;
+    }
+    try {
+      await API.games.join(selectedMatchId, config);
+      setSelectedMatchId(null);
+      setView("lobby");
+      fetchMatches();
+    } catch (err) {
+      alert("Error joining room: " + err.message);
+    }
   };
 
   const handleQuickJoin = (matchId) => {
     console.log("Quick joining match:", matchId);
+    setSelectedMatchId(matchId);
     setView("join");
   };
 
@@ -167,8 +176,12 @@ export default function Home() {
       {view === "join" && (
         <JoinRoomForm
           activePlayer={activeAccount}
+          match={matches.find((m) => m.id === selectedMatchId)}
           onSubmit={handleJoinRoom}
-          onCancel={() => setView("lobby")}
+          onCancel={() => {
+            setSelectedMatchId(null);
+            setView("lobby");
+          }}
         />
       )}
 
