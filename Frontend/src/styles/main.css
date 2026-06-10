@@ -381,7 +381,9 @@ main {
     border: 1px solid #333;
     border-radius: 12px;
     padding: 1.2rem;
-    transition: transform 0.2s, border-color 0.2s;
+    transition:
+        transform 0.2s,
+        border-color 0.2s;
 }
 
 .player-card:hover {
@@ -484,10 +486,16 @@ main {
     transition: background-color 0.2s;
 }
 
-.board-cell.level-1 { background-color: #2a2a32; }
-.board-cell.level-2 { background-color: #3a3a45; }
-.board-cell.level-3 { background-color: #4a4a58; }
-.board-cell.level-4 { 
+.board-cell.level-1 {
+    background-color: #2a2a32;
+}
+.board-cell.level-2 {
+    background-color: #3a3a45;
+}
+.board-cell.level-3 {
+    background-color: #4a4a58;
+}
+.board-cell.level-4 {
     background-color: #5a5a6b;
     box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
 }
@@ -504,7 +512,6 @@ main {
 .professor-token {
     width: 40px;
     height: 40px;
-    background-color: #ff4d4d;
     border-radius: 50%;
     color: white;
     display: flex;
@@ -514,8 +521,16 @@ main {
     font-size: 1.2rem;
     cursor: help;
     position: relative;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.professor-token-blue {
+    background-color: #4d91ff;
+}
+
+.professor-token-red {
+    background-color: #ff4d4d;
 }
 
 .professor-tooltip {
@@ -614,7 +629,9 @@ footer {
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    transition: transform 0.2s, border-color 0.2s;
+    transition:
+        transform 0.2s,
+        border-color 0.2s;
 }
 
 .spectator-badge:hover {
