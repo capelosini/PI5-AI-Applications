@@ -35,6 +35,7 @@ O jogador foi construído para ser resiliente e eficiente sob restrições de te
 -   **Agressividade**: A prioridade máxima é dada ao avanço de nível dos professores. A IA busca constantemente subir para o nível 3.
 -   **Controle de Centro**: Valorizamos posições centrais que oferecem maior mobilidade e opções de upgrade.
 -   **Bloqueio Preventivo**: A IA identifica ameaças do oponente e prioriza "mentorias" (upgrades) em casas que bloqueiam o caminho do adversário.
+-   **Inicialmente**: Antes de chegar na estratégia principal que foi usada, usamos o nome do grupo HoneyPot pela estratégia inicial de ao invés de vencer jogando uma peça no slot nivel 4, fazer um xeque-mate (deixando o adversário sem jogadas possiveis), mas não estava dando muito certo.
 
 ### Como Testamos
 -   **Self-Play**: A IA jogou contra versões anteriores de si mesma para identificar fraquezas em sua defesa.
